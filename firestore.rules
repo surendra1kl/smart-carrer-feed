@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID from Firebase Auth)
+    // Fields:
+    //   - uid: string (required) - The unique ID of the user.
+    //   - email: string (required, email format) - The user's email address.
+    //   - goal: string (required) - The user's primary career goal.
+    //   - interests: list (required) - The user's selected interests.
+    //   - createdAt: timestamp (required) - When the profile was created.
+    //   - updatedAt: timestamp (required) - When the profile was last updated.
+    //
+    // Collection: users/{userId}/saved_content
+    // Document ID: contentId (Unique ID for the content)
+    // Fields:
+    //   - userId: string (required) - The ID of the user who saved the content.
+    //   - contentId: string (required) - The ID of the content item.
+    //   - title: string (required) - The title of the content.
+    //   - url: string (required, URL format) - The URL of the content.
+    //   - source: string (required, enum: ["News", "YouTube"]) - The source of the content.
+    //   - thumbnail: string (optional, URL format) - The thumbnail URL.
+    //   - savedAt: timestamp (required) - When the content was saved.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUserProfile(data) {
+      return hasRequiredFields(['uid', 'email', 'displayName', 'status', 'goal', 'interests', 'createdAt', 'updatedAt']) &&
+             hasOnlyAllowedFields(['uid', 'email', 'displayName', 'status', 'goal', 'interests', 'createdAt', 'updatedAt', 'desiredCourses', 'preferredLanguages']) &&
+             data.uid == request.auth.uid &&
+             data.email is string && isValidEmail(data.email) &&
+             data.displayName is string && data.displayName.size() > 0 &&
+             data.status in ['Student', 'Employee'] &&
+             data.goal is string && data.goal.size() > 0 && data.goal.size() < 200 &&
+             data.interests is list && data.interests.size() <= 20 &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp &&
+             (!('desiredCourses' in data) || data.desiredCourses is list) &&
+             (!('preferredLanguages' in data) || data.preferredLanguages is list);
+    }
+
+    function isValidSavedContent(data) {
+      return hasRequiredFields(['userId', 'contentId', 'title', 'url', 'source', 'savedAt']) &&
+             hasOnlyAllowedFields(['userId', 'contentId', 'title', 'url', 'source', 'savedAt', 'thumbnail']) &&
+             data.userId == request.auth.uid &&
+             data.contentId is string && data.contentId.size() > 0 &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+             data.url is string && isValidUrl(data.url) &&
+             data.source in ['News', 'YouTube'] &&
+             data.savedAt is timestamp &&
+             (!('thumbnail' in data) || isValidUrl(data.thumbnail));
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      allow update: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      
+      match /saved_content/{contentId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidSavedContent(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

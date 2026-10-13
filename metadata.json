@@ -1,0 +1,5 @@
+{
+  "name": "Smart Career Feed",
+  "description": "A personalized career growth feed fetching relevant content from News and YouTube, filtered by AI.",
+  "requestFramePermissions": []
+}

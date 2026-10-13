@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information and career preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique ID of the user." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "status": { "type": "string", "enum": ["Student", "Employee"], "description": "The user's current status." },
+        "desiredCourses": { "type": "array", "items": { "type": "string" }, "description": "Courses the user wants to learn." },
+        "preferredLanguages": { "type": "array", "items": { "type": "string" }, "description": "Languages the user is proficient in." },
+        "goal": { "type": "string", "description": "The user's primary career goal." },
+        "interests": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The user's selected interests."
+        },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "When the profile was last updated." }
+      },
+      "required": ["uid", "email", "displayName", "status", "goal", "interests"]
+    },
+    "SavedContent": {
+      "title": "SavedContent",
+      "description": "Content items saved by the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The ID of the user who saved the content." },
+        "contentId": { "type": "string", "description": "The ID of the content item." },
+        "title": { "type": "string", "description": "The title of the content." },
+        "url": { "type": "string", "format": "uri", "description": "The URL of the content." },
+        "source": { "type": "string", "enum": ["News", "YouTube"], "description": "The source of the content." },
+        "thumbnail": { "type": "string", "format": "uri", "description": "The thumbnail URL." },
+        "savedAt": { "type": "string", "format": "date-time", "description": "When the content was saved." }
+      },
+      "required": ["userId", "contentId", "title", "url", "source"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Stores user profiles and preferences."
+    },
+    "/users/{userId}/saved_content/{contentId}": {
+      "schema": "SavedContent",
+      "description": "Stores content items saved by a specific user."
+    }
+  }
+}
